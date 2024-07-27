@@ -1,0 +1,118 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder, LabelEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, r2_score, mean_absolute_error
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Load the datasets
+accidents_df = pd.read_csv(r"C:\Users\ronal\Desktop\Project\Accidents_Database.csv")
+health_facilities_df = pd.read_excel(r"C:\Users\ronal\Desktop\Project\kenya-health-facilities-2017_08_02.xlsx")
+
+# Display the first few rows of the datasets
+print(accidents_df.head())
+print(health_facilities_df.head())
+
+# Preprocess the accidents data
+columns_to_drop = ['TIME 24 HOURS', 'BASE/SUB BASE', 'ROAD', 'PLACE', 'MV INVOLVED', 'BRIEF ACCIDENT DETAILS', 'NAME OF VICTIM', 'AGE', 'CAUSE CODE', 'VICTIM', 'NO.', 'Date DD/MM/YYYY']
+accidents_df = accidents_df.drop(columns=columns_to_drop)
+
+# Encode the target variable in the accidents dataset
+label_encoder = LabelEncoder()
+accidents_df['GENDER'] = label_encoder.fit_transform(accidents_df['GENDER'])
+
+# Identify categorical columns for one-hot encoding
+categorical_columns = accidents_df.select_dtypes(include=['object']).columns
+
+# Apply one-hot encoding to categorical columns
+column_transformer = ColumnTransformer(
+    transformers=[
+        ('onehot', OneHotEncoder(), categorical_columns)
+    ],
+    remainder='passthrough'  # Keep other columns as they are
+)
+
+# Separate features and target in the accidents dataset
+X_accidents = accidents_df.drop('GENDER', axis=1)
+y_accidents = accidents_df['GENDER']
+
+# Apply the column transformer to the features
+X_accidents_encoded = column_transformer.fit_transform(X_accidents)
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X_accidents_encoded, y_accidents, test_size=0.2, random_state=42)
+
+# Initialize and train the model
+model = RandomForestClassifier(random_state=42)
+model.fit(X_train, y_train)
+
+# Make predictions
+y_pred = model.predict(X_test)
+
+# Evaluate the model
+accuracy = accuracy_score(y_test, y_pred)
+conf_matrix = confusion_matrix(y_test, y_pred)
+class_report = classification_report(y_test, y_pred)
+
+print(f'Accuracy: {accuracy}')
+print('Confusion Matrix:')
+print(conf_matrix)
+print('Classification Report:')
+print(class_report)
+
+# Plot confusion matrix
+plt.figure(figsize=(10, 7))
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=label_encoder.classes_, yticklabels=label_encoder.classes_)
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.title('Confusion Matrix')
+plt.show()
+
+# Assuming both datasets have a 'County' column to merge on
+combined_df = pd.merge(accidents_df, health_facilities_df, on='County', how='left')
+
+# Now repeat the preprocessing, feature engineering, model training, and evaluation steps
+# Drop columns not needed
+columns_to_drop_combined = ['TIME 24 HOURS', 'BASE/SUB BASE', 'ROAD', 'PLACE', 'MV INVOLVED', 'BRIEF ACCIDENT DETAILS', 'NAME OF VICTIM', 'AGE', 'CAUSE CODE', 'VICTIM', 'NO.', 'Date DD/MM/YYYY']
+combined_df = combined_df.drop(columns=columns_to_drop_combined)
+
+# Encode target variable and categorical columns
+combined_df['GENDER'] = label_encoder.fit_transform(combined_df['GENDER'])
+categorical_columns_combined = combined_df.select_dtypes(include=['object']).columns
+
+# One-hot encode categorical columns
+column_transformer_combined = ColumnTransformer(
+    transformers=[
+        ('onehot', OneHotEncoder(), categorical_columns_combined)
+    ],
+    remainder='passthrough'
+)
+
+# Separate features and target
+X_combined = combined_df.drop('GENDER', axis=1)
+y_combined = combined_df['GENDER']
+
+# Apply column transformer
+X_combined_encoded = column_transformer_combined.fit_transform(X_combined)
+
+# Split the data into training and testing sets
+X_train_combined, X_test_combined, y_train_combined, y_test_combined = train_test_split(X_combined_encoded, y_combined, test_size=0.2, random_state=42)
+
+# Initialize and train the model
+model_combined = RandomForestRegressor(random_state=42)
+model_combined.fit(X_train_combined, y_train_combined)
+
+# Make predictions
+y_pred_combined = model_combined.predict(X_test_combined)
+
+# Evaluate the model
+r2_combined = r2_score(y_test_combined, y_pred_combined)
+mae_combined = mean_absolute_error(y_test_combined, y_pred_combined)
+print(f'R2 Score (combined): {r2_combined}')
+print(f'Mean Absolute Error (combined): {mae_combined}')
+
+
+

@@ -1,0 +1,41 @@
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.layers import Embedding, LSTM, Dense
+
+# Example input and output sequences (you can replace these with your own data)
+input_sequence = ["I", "love", "learning"]
+output_sequence = ["Napenda", "kusoma", "sanaa"]
+
+# Create vocabulary and word-to-index mappings
+vocab = set(input_sequence + output_sequence)
+word_to_index = {word: idx for idx, word in enumerate(vocab)}
+index_to_word = {idx: word for word, idx in word_to_index.items()}
+
+# Convert input and output sequences to integer representations
+input_indices = [word_to_index[word] for word in input_sequence]
+output_indices = [word_to_index[word] for word in output_sequence]
+
+# Define model architecture
+embedding_dim = 64
+hidden_units = 128
+
+model = tf.keras.Sequential([
+    Embedding(len(vocab), embedding_dim, input_length=len(input_sequence)),
+    LSTM(hidden_units, return_sequences=True),
+    Dense(len(vocab), activation="softmax")
+])
+
+# Compile the model
+model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+
+# Train the model (you'll need actual training data)
+model.fit(np.array([input_indices]), np.array([output_indices]), epochs=10)
+
+# Inference (translation)
+input_test = ["I", "love", "deep", "learning"]
+input_test_indices = [word_to_index.get(word, 0) for word in input_test]
+predicted_indices = model.predict(np.array([input_test_indices]))
+predicted_words = [index_to_word[np.argmax(pred)] for pred in predicted_indices[0]]
+
+print("Input:", " ".join(input_test))
+print("Predicted output:", " ".join(predicted_words))
